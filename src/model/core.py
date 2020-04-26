@@ -61,12 +61,12 @@ class Core:
         from sklearn.linear_model.logistic import LogisticRegression
 
         X_Train_embedded = TSNE(n_components=2).fit_transform(self.x)
-        y_predicted = self.model.predict(self.x)
-        model = LogisticRegression().fit(self.x, self.y)
+        y_predicted =self.model.predict(self.x)
 
         # replace the above by your data and model
         # create meshgrid
         resolution = 100  # 100x100 background pixels
+        background_model = neighbors.KNeighborsClassifier(n_neighbors=1).fit(X_Train_embedded, y_predicted)
         X2d_xmin, X2d_xmax = np.min(X_Train_embedded[:, 0]), np.max(X_Train_embedded[:, 0])
         X2d_ymin, X2d_ymax = np.min(X_Train_embedded[:, 1]), np.max(X_Train_embedded[:, 1])
         xx, yy = np.meshgrid(np.linspace(X2d_xmin, X2d_xmax, resolution), np.linspace(X2d_ymin, X2d_ymax, resolution))
