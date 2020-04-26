@@ -1,4 +1,4 @@
 data/
-src/data
-.idea
+src/data/
+.idea/
 src/model/loader.py
