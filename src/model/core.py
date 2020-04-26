@@ -23,6 +23,7 @@ class Core:
         self.path = path
         self.x = None
         self.y = None
+
     def load_data(self):
         f = open(self.path, 'r')
         df = pd.read_csv(f, sep=',', header=None)
@@ -45,7 +46,7 @@ class Core:
 
     def predict(self) -> np.ndarray:
         # return the predict result
-        return self.model.predict(self.data[0:2,:-1])
+        return self.model.predict(self.data[0:2, :-1])
 
     def optimizer(self):
         """
@@ -62,17 +63,17 @@ class Core:
 
         X_Train_embedded = TSNE(n_components=2).fit_transform(self.x)
         y_predicted = self.model.predict(self.x)
-        model = LogisticRegression().fit(self.x, self.y)
 
         # replace the above by your data and model
         # create meshgrid
         resolution = 100  # 100x100 background pixels
+        background_model = neighbors.KNeighborsClassifier(n_neighbors=1).fit(X_Train_embedded, y_predicted)
         X2d_xmin, X2d_xmax = np.min(X_Train_embedded[:, 0]), np.max(X_Train_embedded[:, 0])
         X2d_ymin, X2d_ymax = np.min(X_Train_embedded[:, 1]), np.max(X_Train_embedded[:, 1])
         xx, yy = np.meshgrid(np.linspace(X2d_xmin, X2d_xmax, resolution), np.linspace(X2d_ymin, X2d_ymax, resolution))
 
         # approximate Voronoi tesselation on resolution x resolution grid using 1-NN
-        voronoiBackground = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
+        voronoiBackground = background_model.predict(np.c_[xx.ravel(), yy.ravel()])
         voronoiBackground = voronoiBackground.reshape((resolution, resolution))
 
         # plot
@@ -138,17 +139,16 @@ class Core:
                 if idx_a == idx_b:
                     a = np.asarray(a).reshape(1, -1)
                     b = np.asarray(b).reshape(1, -1)
-                    val = pairwise_distances(a,b,metric='manhattan').item()
+                    val = pairwise_distances(a, b, metric='manhattan').item()
                     distance += val
             print('distance of dim {} is {}'.format(i, val))
 
-                # if idx_x != idx_y the distance to be add is zero according to paper
+            # if idx_x != idx_y the distance to be add is zero according to paper
 
         return distance
 
 
 if __name__ == '__main__':
-
     core = Core('../../data/features.csv')
     core.util()
     core.draw()
