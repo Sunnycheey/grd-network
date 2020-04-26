@@ -48,7 +48,7 @@ class Core:
         # return the predict result
         return self.model.predict(self.data[0:2, :-1])
 
-    def optimizer(self):
+    def optimizer(self, R: int = 5):
         """
         Find the optimised combination of weights
         :return:
@@ -103,9 +103,10 @@ class Core:
         return ret
 
     @staticmethod
-    def get_distance(x: np.ndarray, y: np.ndarray) -> float:
+    def get_distance(x: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Function for measure the distance between feature point
+        :param weights: weights array
         :param x: feature point x
         :param y: feature point y
         :return: the distance between them
@@ -121,25 +122,20 @@ class Core:
                 a = x[i].reshape(1, -1)
                 b = y[i].reshape(1, -1)
                 val = pairwise_distances(a, b, metric='manhattan').item()
-                distance += val
+                distance += val * weights[i]
             else:
-                # low of efficiency :(
-                a = list(reversed(x[i].tolist()))
-                b = list(reversed(y[i].tolist()))
-                idx_a = idx_b = 0
-                for idx in range(len(a)):
-                    if a[idx] != 0:
-                        idx_a = idx
-                        break
-                for idx in range(len(b)):
-                    if b[idx] != 0:
-                        idx_b = idx
-                        break
-                if idx_a == idx_b:
-                    a = np.asarray(a).reshape(1, -1)
-                    b = np.asarray(b).reshape(1, -1)
+                # reversed ndarray
+                a = x[i][::-1]
+                b = y[i][::-1]
+                # find position of the first occurrence of non-zero element
+                idx_a = np.nonzero(a)[0]
+                idx_b = np.nonzero(b)[0]
+
+                if len(idx_a) == len(idx_b):
+                    a = a[idx_a].reshape(1, -1)
+                    b = b[idx_b].reshape(1, -1)
                     val = pairwise_distances(a, b, metric='manhattan').item()
-                    distance += val
+                    distance += val * weights[i]
             print('distance of dim {} is {}'.format(i, val))
 
             # if idx_x != idx_y the distance to be add is zero according to paper
@@ -150,4 +146,5 @@ class Core:
 if __name__ == '__main__':
     core = Core('../../data/features.csv')
     core.util()
-    core.draw()
+    #core.draw()
+    print(core.predict())
