@@ -59,7 +59,6 @@ class Core:
             raise ValueError('you need train the model first')
         from sklearn.manifold.t_sne import TSNE
         import matplotlib.pyplot as plt
-        from sklearn.linear_model.logistic import LogisticRegression
 
         X_Train_embedded = TSNE(n_components=2).fit_transform(self.x)
         y_predicted = self.model.predict(self.x)
