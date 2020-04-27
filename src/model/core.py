@@ -23,6 +23,7 @@ class Core:
         self.path = path
         self.x = None
         self.y = None
+        self.weights = np.random.uniform(0.5,1.5,(1,6)).flatten()
 
     def load_data(self):
         f = open(self.path, 'r')
@@ -35,7 +36,7 @@ class Core:
         self.y = target
         data = self.data[:, :-1]
         self.x = data
-        clf = neighbors.KNeighborsClassifier(metric=Core.get_distance)
+        clf = neighbors.KNeighborsClassifier(metric=self.get_distance)
         clf.fit(data, target)
         self.model = clf
         print('model trained successfully!')
@@ -43,6 +44,7 @@ class Core:
     def util(self):
         self.load_data()
         self.train_model()
+        #print(self.weights)
 
     def predict(self) -> np.ndarray:
         # return the predict result
@@ -53,6 +55,96 @@ class Core:
         Find the optimised combination of weights
         :return:
         """
+        """
+        R is the rounds that repeat the training set R times
+        kreco is the closest k points of each point
+        P_train is the current point of train
+        S is the other point of train
+        """
+        for r in range(R):
+            kreco = 5
+            for i in range(len(self.y)):
+                S_good = []
+                S_bad = []
+                P_train_x = self.x[i,:]
+                P_train_y = self.y[i]
+                """
+                Find the S_good
+                S_good[0:k] is the distance of closest k points and the same class of Current point
+                """
+                for j in range(len(self.y)):
+                    S_x = self.x[j,:]
+                    S_y = self.y[j]
+                    if P_train_y==S_y and i!=j:
+                        S_good.append(Core.get_distance(self,P_train_x,S_x))
+                    else:
+                        S_good.append(float("inf"))
+                S_good_sort = np.argsort(S_good)
+                #print(S_good_sort[0:5])
+                """
+                Find the d_maxgood_feature
+                d_maxgood_feature is the set of max distance (Compared with point in S_good[0:k]) in every feature.
+                """
+                d_maxgood = []
+                for feature in range(6):
+                    max = 0
+                    for k in range(kreco):
+                        a=Core.get_distance_i(P_train_x,self.x[S_good_sort[k],:],feature)
+                        #print(a)
+                        if Core.get_distance_i(P_train_x,self.x[S_good_sort[k],:],feature)>max:
+                            max = Core.get_distance_i(P_train_x,self.x[S_good_sort[k],:],feature)
+                    d_maxgood.append(max)
+                #print(d_maxgood)
+                """
+                Find the S_bad
+                S_bad[0:k] is the distance of closest k points and the different class of Current point
+                """
+                for j in range(len(self.y)):
+                    S_x = self.x[j,:]
+                    S_y = self.y[j]
+                    if P_train_y!=S_y and i!=j:
+                        S_bad.append(Core.get_distance(self,P_train_x,S_x))
+                    else:
+                        S_bad.append(float("inf"))
+                S_bad_sort = np.argsort(S_bad)
+                """
+                Find the n_bad
+                n_bad is the number set that smaller than the distance of d_maxgood_feature in every feature.
+                """
+                n_bad = []
+                for feature in range(6):
+                    count = 0
+                    for k in range(kreco):
+                        if Core.get_distance_i(P_train_x,self.x[S_bad_sort[k],:],feature)<=d_maxgood[feature]:
+                            count+=1
+                    n_bad.append(count)
+                #print(n_bad)
+                """
+                Weight adjustment.
+                n_bad_min is the smallest distance in all feature
+                decrease_with_weight is the sum of all decrease of difference before and after with weights
+                increase is the sum of increase without weights
+                increase_feature[] is the feature that need increase weights   
+                """
+                n_bad_sort = np.argsort(n_bad)
+                n_bad_min = n_bad[n_bad_sort[0]]
+                decrease_with_weight = 0
+                increase = 0
+                increase_feature = []
+                for feature in range(6):
+                    if n_bad[feature]>n_bad_min:
+                        for k in range(kreco):
+                            decrease_with_weight+= 0.01*self.weights[feature]*Core.get_distance_i(P_train_x,self.x[S_bad_sort[k],:],feature)
+                        self.weights[feature] = self.weights[feature]-0.01*self.weights[feature]
+                    else:
+                        for k in range(kreco):
+                            increase+= Core.get_distance_i(P_train_x,self.x[S_bad_sort[k],:],feature)
+                        increase_feature.append(feature)
+                every_increase = decrease_with_weight/increase
+                for i in range(len(increase_feature)):
+                    self.weights[increase_feature]+=every_increase
+                print(self.weights)
+
 
     def draw(self):
         if self.model is None:
@@ -102,8 +194,7 @@ class Core:
         ret.append(_feature_6)
         return ret
 
-    @staticmethod
-    def get_distance(x: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
+    def get_distance(self,x: np.ndarray, y: np.ndarray) -> float:
         """
         Function for measure the distance between feature point
         :param weights: weights array
@@ -119,32 +210,62 @@ class Core:
             # reshape the ndarray from 1 dim to 2 dim
             val = 0
             if i != 1 and i != 2:
-                a = x[i].reshape(1, -1)
-                b = y[i].reshape(1, -1)
-                val = pairwise_distances(a, b, metric='manhattan').item()
-                distance += val * weights[i]
-            else:
-                # reversed ndarray
-                a = x[i][::-1]
-                b = y[i][::-1]
-                # find position of the first occurrence of non-zero element
-                idx_a = np.nonzero(a)[0]
-                idx_b = np.nonzero(b)[0]
 
-                if len(idx_a) == len(idx_b):
-                    a = a[idx_a].reshape(1, -1)
-                    b = b[idx_b].reshape(1, -1)
-                    val = pairwise_distances(a, b, metric='manhattan').item()
-                    distance += val * weights[i]
-            print('distance of dim {} is {}'.format(i, val))
+                val = Core.get_common_feature_distance(x[i], y[i])
+                distance += val * self.weights[i]
+
+            else:
+                val = Core.get_padding_feature_distance(x[i], y[i])
+                distance += val * self.weights[i]
+            #print('distance of dim {} is {}'.format(i, val))
 
             # if idx_x != idx_y the distance to be add is zero according to paper
 
         return distance
+
+    @staticmethod
+    def get_common_feature_distance(x: np.ndarray, y: np.ndarray) -> int:
+        a = x.reshape(1, -1)
+        b = y.reshape(1, -1)
+        val = pairwise_distances(a, b, metric='manhattan').item()
+        return val
+
+    @staticmethod
+    def get_padding_feature_distance(x: np.ndarray, y: np.ndarray):
+        val = 0
+        a = x[::-1]
+        b = y[::-1]
+        # find position of the first occurrence of non-zero element
+        idx_a = np.nonzero(a)[0][0]
+        idx_b = np.nonzero(b)[0][0]
+
+        if idx_a == idx_b:
+            a = a[idx_a:].reshape(1, -1)
+            b = b[idx_b:].reshape(1, -1)
+            val = pairwise_distances(a, b, metric='manhattan').item()
+        return val
+
+    @staticmethod
+    def get_distance_i(x: np.ndarray, y: np.ndarray, i) -> float:
+        x = Core.get_features(x)
+        y = Core.get_features(y)
+        if i != 1 and i != 2:
+            return Core.get_common_feature_distance(x[i], y[i])
+        else:
+            return Core.get_padding_feature_distance(x[i], y[i])
+
 
 
 if __name__ == '__main__':
     core = Core('../../data/features.csv')
     core.util()
     #core.draw()
-    print(core.predict())
+    #print(core.predict())
+    core.optimizer()
+    print(core.weights)
+    # after run core.optimizer(), we should save weights
+    import json
+    obj = {}
+    obj['weight'] = core.weights
+    with open('weights.json', 'a') as f:
+        json.dump(obj, f)
