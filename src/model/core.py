@@ -24,7 +24,7 @@ class Core:
         self.x = None
         self.y = None
         if not optimizer_flag:
-            self.weights = np.asarray([1,1,1,1,1,1])
+            self.weights = np.asarray([1, 1, 1, 1, 1, 1])
         else:
             self.weights = np.random.uniform(0.5, 1.5, (1, 6)).flatten()
 
@@ -49,7 +49,7 @@ class Core:
         self.train_model()
         # print(self.weights)
 
-    def predict(self, path: str) -> np.ndarray:
+    def predict(self, path: str) -> tuple[np.ndarray, np.ndarray]:
         with open(path, 'r') as f:
             df = pd.read_csv(f, sep=',', header=None)
         val = df.values
@@ -59,6 +59,7 @@ class Core:
 
     def eval(self, path: str) -> float:
         result, ground_truth = self.predict(path)
+        print('predict result: {}'.format(result.tolist()))
         diff = result - ground_truth
         acc = np.sum(diff == 0) / ground_truth.size
         return acc
@@ -79,21 +80,21 @@ class Core:
             for i in range(len(self.y)):
                 S_good = []
                 S_bad = []
-                P_train_x = self.x[i,:]
+                P_train_x = self.x[i, :]
                 P_train_y = self.y[i]
                 """
                 Find the S_good
                 S_good[0:k] is the distance of closest k points and the same class of Current point
                 """
                 for j in range(len(self.y)):
-                    S_x = self.x[j,:]
+                    S_x = self.x[j, :]
                     S_y = self.y[j]
-                    if P_train_y==S_y and i!=j:
-                        S_good.append(Core.get_distance(self,P_train_x,S_x))
+                    if P_train_y == S_y and i != j:
+                        S_good.append(Core.get_distance(self, P_train_x, S_x))
                     else:
                         S_good.append(float("inf"))
                 S_good_sort = np.argsort(S_good)
-                #print(S_good_sort[0:5])
+                # print(S_good_sort[0:5])
                 """
                 Find the d_maxgood_feature
                 d_maxgood_feature is the set of max distance (Compared with point in S_good[0:k]) in every feature.
@@ -102,21 +103,21 @@ class Core:
                 for feature in range(6):
                     max = 0
                     for k in range(kreco):
-                        a=Core.get_distance_i(P_train_x,self.x[S_good_sort[k],:],feature)
-                        #print(a)
-                        if Core.get_distance_i(P_train_x,self.x[S_good_sort[k],:],feature)>max:
-                            max = Core.get_distance_i(P_train_x,self.x[S_good_sort[k],:],feature)
+                        a = Core.get_distance_i(P_train_x, self.x[S_good_sort[k], :], feature)
+                        # print(a)
+                        if Core.get_distance_i(P_train_x, self.x[S_good_sort[k], :], feature) > max:
+                            max = Core.get_distance_i(P_train_x, self.x[S_good_sort[k], :], feature)
                     d_maxgood.append(max)
-                #print(d_maxgood)
+                # print(d_maxgood)
                 """
                 Find the S_bad
                 S_bad[0:k] is the distance of closest k points and the different class of Current point
                 """
                 for j in range(len(self.y)):
-                    S_x = self.x[j,:]
+                    S_x = self.x[j, :]
                     S_y = self.y[j]
-                    if P_train_y!=S_y and i!=j:
-                        S_bad.append(Core.get_distance(self,P_train_x,S_x))
+                    if P_train_y != S_y and i != j:
+                        S_bad.append(Core.get_distance(self, P_train_x, S_x))
                     else:
                         S_bad.append(float("inf"))
                 S_bad_sort = np.argsort(S_bad)
@@ -128,8 +129,8 @@ class Core:
                 for feature in range(6):
                     count = 0
                     for k in range(kreco):
-                        if Core.get_distance_i(P_train_x,self.x[S_bad_sort[k],:],feature)<=d_maxgood[feature]:
-                            count+=1
+                        if Core.get_distance_i(P_train_x, self.x[S_bad_sort[k], :], feature) <= d_maxgood[feature]:
+                            count += 1
                     n_bad.append(count)
                 print(n_bad)
                 """
@@ -142,19 +143,27 @@ class Core:
                 n_bad_sort = np.argsort(n_bad)
                 n_bad_min = n_bad[n_bad_sort[0]]
                 decrease = 0
-                #increase = 0
+                # increase = 0
                 increase_feature = []
                 for feature in range(6):
-                    if n_bad[feature]>n_bad_min:
-                        decrease+=0.01*self.weights[feature]*n_bad[feature]/5
-                        self.weights[feature] = self.weights[feature]-0.01*self.weights[feature]*n_bad[feature]/5
+                    if n_bad[feature] > n_bad_min:
+                        decrease += 0.01 * self.weights[feature] * n_bad[feature] / 5
+                        self.weights[feature] = self.weights[feature] - 0.01 * self.weights[feature] * n_bad[
+                            feature] / 5
                     else:
                         increase_feature.append(feature)
-                every_increase = decrease/len(increase_feature)
-                for l in range(len(increase_feature)) :
-                    self.weights[increase_feature[l]] = self.weights[increase_feature[l]]+every_increase
+                every_increase = decrease / len(increase_feature)
+                for l in range(len(increase_feature)):
+                    self.weights[increase_feature[l]] = self.weights[increase_feature[l]] + every_increase
                 print(self.weights)
-                #print(self.weights.sum())
+                # print(self.weights.sum())
+
+    def save(self, path: str):
+        import json
+
+        obj = {'weight': self.weights.tolist()}
+        with open('weights.json', 'a') as f:
+            json.dump(obj, f)
 
     def draw(self):
         if self.model is None:
@@ -266,16 +275,20 @@ class Core:
 
 
 if __name__ == '__main__':
-    core = Core('../../data/train_90.csv', False)
-    core.util()
-    # core.draw()
-    print(core.eval('../../data/test_90.csv'))
-    # core.optimizer()
-    print(core.weights.tolist())
-    # after run core.optimizer(), we should save weights
-    import json
+    import argparse
 
-    obj = {}
-    obj['weight'] = core.weights.tolist()
-    with open('weights.json', 'a') as f:
-        json.dump(obj, f)
+    parser = argparse.ArgumentParser(description="classifier for wf based on handcraft feature based on knn")
+    parser.add_argument('--do_eval', action='store_true', help='eval the model')
+    parser.add_argument('--do_optimize', action='store_true', help='optimize weights')
+    parser.add_argument('--ratio', type=int, default=80, help='set ratio (which dataset to load)')
+    args = parser.parse_args()
+    if args.do_eval:
+        core = Core('../../data/train_{}.csv'.format(args.ratio), False)
+        core.util()
+        core.eval('../../data/test_{}.csv'.format(args.ratio))
+    if args.do_optimize:
+        core = Core('../../data/train_{}.csv'.format(args.ratio), True)
+        core.util()
+        core.optimizer()
+        core.save('weights.json')
+        print('result weights: {}'.format(core.weights.tolist()))
