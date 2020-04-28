@@ -13,10 +13,10 @@ class Divider:
         import pandas as pd
         import numpy as np
         import os
+        
         train_set = np.empty((int(5000*self.ratio/100), 429))
-        test_set = np.empty((int(5000*self.ratio/100), 429))
-        train_idx = 0
-        test_idx = 0
+        test_set = np.empty((int(5000*(100-self.ratio/100), 429)))
+
         with open(self.path, 'r') as f:
             df = pd.read_csv(f, sep=',', header=None)
         val = df.values
