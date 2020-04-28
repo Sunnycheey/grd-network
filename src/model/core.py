@@ -23,7 +23,7 @@ class Core:
         self.path = path
         self.x = None
         self.y = None
-        self.weights = np.random.uniform(0.5,1.5,(1,6)).flatten()
+        self.weights = np.random.uniform(0.5, 1.5, (1, 6)).flatten()
 
     def load_data(self):
         f = open(self.path, 'r')
@@ -44,11 +44,21 @@ class Core:
     def util(self):
         self.load_data()
         self.train_model()
-        #print(self.weights)
+        # print(self.weights)
 
-    def predict(self) -> np.ndarray:
+    def predict(self, path: str) -> np.ndarray:
+        with open(path, 'r') as f:
+            df = pd.read_csv(f, sep=',', header=None)
+        val = df.values
+        ground_truth = val[:, -1]
         # return the predict result
-        return self.model.predict(self.data[0:2, :-1])
+        return self.model.predict(val[:, :-1]), ground_truth
+
+    def eval(self, path: str) -> float:
+        result, ground_truth = self.predict(path)
+        diff = result - ground_truth
+        acc = np.sum(diff == 0) / ground_truth.size
+        return acc
 
     def optimizer(self, R: int = 5):
         """
@@ -118,7 +128,7 @@ class Core:
                         if Core.get_distance_i(P_train_x,self.x[S_bad_sort[k],:],feature)<=d_maxgood[feature]:
                             count+=1
                     n_bad.append(count)
-                #print(n_bad)
+                print(n_bad)
                 """
                 Weight adjustment.
                 n_bad_min is the smallest distance in all feature
@@ -128,23 +138,20 @@ class Core:
                 """
                 n_bad_sort = np.argsort(n_bad)
                 n_bad_min = n_bad[n_bad_sort[0]]
-                decrease_with_weight = 0
-                increase = 0
+                decrease = 0
+                #increase = 0
                 increase_feature = []
                 for feature in range(6):
                     if n_bad[feature]>n_bad_min:
-                        for k in range(kreco):
-                            decrease_with_weight+= 0.01*self.weights[feature]*Core.get_distance_i(P_train_x,self.x[S_bad_sort[k],:],feature)
-                        self.weights[feature] = self.weights[feature]-0.01*self.weights[feature]
+                        decrease+=0.01*self.weights[feature]*n_bad[feature]/5
+                        self.weights[feature] = self.weights[feature]-0.01*self.weights[feature]*n_bad[feature]/5
                     else:
-                        for k in range(kreco):
-                            increase+= Core.get_distance_i(P_train_x,self.x[S_bad_sort[k],:],feature)
                         increase_feature.append(feature)
-                every_increase = decrease_with_weight/increase
-                for i in range(len(increase_feature)):
-                    self.weights[increase_feature]+=every_increase
+                every_increase = decrease/len(increase_feature)
+                for l in range(len(increase_feature)) :
+                    self.weights[increase_feature[l]] = self.weights[increase_feature[l]]+every_increase
                 print(self.weights)
-
+                #print(self.weights.sum())
 
     def draw(self):
         if self.model is None:
@@ -194,7 +201,7 @@ class Core:
         ret.append(_feature_6)
         return ret
 
-    def get_distance(self,x: np.ndarray, y: np.ndarray) -> float:
+    def get_distance(self, x: np.ndarray, y: np.ndarray) -> float:
         """
         Function for measure the distance between feature point
         :param weights: weights array
@@ -217,7 +224,7 @@ class Core:
             else:
                 val = Core.get_padding_feature_distance(x[i], y[i])
                 distance += val * self.weights[i]
-            #print('distance of dim {} is {}'.format(i, val))
+            # print('distance of dim {} is {}'.format(i, val))
 
             # if idx_x != idx_y the distance to be add is zero according to paper
 
@@ -235,9 +242,9 @@ class Core:
         val = 0
         a = x[::-1]
         b = y[::-1]
-        # find position of the first occurrence of non-zero element
-        idx_a = np.nonzero(a)[0][0]
-        idx_b = np.nonzero(b)[0][0]
+        # find position of the first occurrence of non -1 element
+        idx_a = np.argmax(a != -1)
+        idx_b = np.argmax(b != -1)
 
         if idx_a == idx_b:
             a = a[idx_a:].reshape(1, -1)
@@ -255,17 +262,18 @@ class Core:
             return Core.get_padding_feature_distance(x[i], y[i])
 
 
-
 if __name__ == '__main__':
-    core = Core('../../data/features.csv')
+    core = Core('../../data/train.csv')
     core.util()
-    #core.draw()
-    #print(core.predict())
-    core.optimizer()
+    # core.draw()
+    #print(core.predict('../../data/test.csv').tolist())
+    print(core.eval('../../data/test.csv'))
+    # core.optimizer()
     print(core.weights)
     # after run core.optimizer(), we should save weights
     import json
+
     obj = {}
-    obj['weight'] = core.weights
+    obj['weight'] = core.weights.tolist()
     with open('weights.json', 'a') as f:
         json.dump(obj, f)
