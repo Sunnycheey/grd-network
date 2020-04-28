@@ -40,5 +40,5 @@ class Divider:
 
 
 if __name__ == '__main__':
-    divider = Divider('../../data/features.csv', 90)
+    divider = Divider('../../data/features.csv', 80)
     divider.divide()

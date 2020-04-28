@@ -24,7 +24,8 @@ class Core:
         self.x = None
         self.y = None
         if not optimizer_flag:
-            self.weights = np.asarray([1, 1, 1, 1, 1, 1])
+            # self.weights = np.asarray([2.891, 0.922, 0.880, 0.040, 1.277, 0.898])
+            self.weights = np.asarray([1,1,1,1,1,1])
         else:
             self.weights = np.random.uniform(0.5, 1.5, (1, 6)).flatten()
 
@@ -285,7 +286,7 @@ if __name__ == '__main__':
     if args.do_eval:
         core = Core('../../data/train_{}.csv'.format(args.ratio), False)
         core.util()
-        core.eval('../../data/test_{}.csv'.format(args.ratio))
+        print(core.eval('../../data/test_{}.csv'.format(args.ratio)))
     if args.do_optimize:
         core = Core('../../data/train_{}.csv'.format(args.ratio), True)
         core.util()
