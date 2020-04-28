@@ -17,13 +17,16 @@ from sklearn.metrics import pairwise_distances
 
 
 class Core:
-    def __init__(self, path: str) -> Core:
+    def __init__(self, path: str, optimizer_flag: bool) -> Core:
         self.model = None
         self.data = None
         self.path = path
         self.x = None
         self.y = None
-        self.weights = np.random.uniform(0.5, 1.5, (1, 6)).flatten()
+        if not optimizer_flag:
+            self.weights = np.asarray([1,1,1,1,1,1])
+        else:
+            self.weights = np.random.uniform(0.5, 1.5, (1, 6)).flatten()
 
     def load_data(self):
         f = open(self.path, 'r')
@@ -134,7 +137,7 @@ class Core:
                 n_bad_min is the smallest distance in all feature
                 decrease_with_weight is the sum of all decrease of difference before and after with weights
                 increase is the sum of increase without weights
-                increase_feature[] is the feature that need increase weights   
+                increase_feature[] is the feature that need increase weights
                 """
                 n_bad_sort = np.argsort(n_bad)
                 n_bad_min = n_bad[n_bad_sort[0]]
@@ -263,13 +266,12 @@ class Core:
 
 
 if __name__ == '__main__':
-    core = Core('../../data/train.csv')
+    core = Core('../../data/train_90.csv', False)
     core.util()
     # core.draw()
-    #print(core.predict('../../data/test.csv').tolist())
-    print(core.eval('../../data/test.csv'))
+    print(core.eval('../../data/test_90.csv'))
     # core.optimizer()
-    print(core.weights)
+    print(core.weights.tolist())
     # after run core.optimizer(), we should save weights
     import json
 

@@ -4,18 +4,18 @@ This module is used to divide original dataset to train set and test set
 
 
 class Divider:
-    def __init__(self, path):
+    def __init__(self, path: str, ratio: int = 80):
         self.path = path
         # the ratio is 80/20
-        self.ratio = 80
+        self.ratio = ratio
 
     def divide(self):
         import pandas as pd
         import numpy as np
         import os
-        
+
         train_set = np.empty((int(5000*self.ratio/100), 429))
-        test_set = np.empty((int(5000*(100-self.ratio/100), 429)))
+        test_set = np.empty((int(5000*(100-self.ratio)/100), 429))
 
         with open(self.path, 'r') as f:
             df = pd.read_csv(f, sep=',', header=None)
@@ -35,10 +35,10 @@ class Divider:
 
         # write the result to csv file, namely train.csv and test.csv
         dir = os.path.dirname(self.path)
-        np.savetxt(os.path.join(dir, 'train.csv'), train_set, delimiter=',')
-        np.savetxt(os.path.join(dir, 'test.csv'), test_set, delimiter=',')
+        np.savetxt(os.path.join(dir, 'train_{}.csv'.format(self.ratio)), train_set, delimiter=',')
+        np.savetxt(os.path.join(dir, 'test_{}.csv'.format(self.ratio)), test_set, delimiter=',')
 
 
 if __name__ == '__main__':
-    divider = Divider('../../data/features.csv')
+    divider = Divider('../../data/features.csv', 90)
     divider.divide()
