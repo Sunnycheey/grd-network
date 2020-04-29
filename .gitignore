@@ -1,6 +1,4 @@
-data/
 src/data/
 .idea/
 src/model/loader.py
-src/model/*.json
 *.png

@@ -14,10 +14,11 @@ from typing import List
 import numpy as np
 from sklearn import neighbors
 from sklearn.metrics import pairwise_distances
+import json
 
 
 class Core:
-    def __init__(self, path: str, optimizer_flag: bool) -> Core:
+    def __init__(self, path: str, optimizer_flag: bool, weights_path) -> Core:
         self.model = None
         self.data = None
         self.path = path
@@ -25,7 +26,9 @@ class Core:
         self.y = None
         if not optimizer_flag:
             # self.weights = np.asarray([2.891, 0.922, 0.880, 0.040, 1.277, 0.898])
-            self.weights = np.asarray([1,1,1,1,1,1])
+            with open(weights_path, 'r') as f:
+                obj = json.load(f)
+            self.weights = np.asarray(obj['weight'])
         else:
             self.weights = np.random.uniform(0.5, 1.5, (1, 6)).flatten()
 
@@ -65,7 +68,7 @@ class Core:
         acc = np.sum(diff == 0) / ground_truth.size
         return acc
 
-    def optimizer(self, R: int = 5):
+    def optimizer(self, R: int = 1):
         """
         Find the optimised combination of weights
         :return:
@@ -163,7 +166,7 @@ class Core:
         import json
 
         obj = {'weight': self.weights.tolist()}
-        with open('weights.json', 'a') as f:
+        with open('weights.json', 'w') as f:
             json.dump(obj, f)
 
     def draw(self):
@@ -282,14 +285,18 @@ if __name__ == '__main__':
     parser.add_argument('--do_eval', action='store_true', help='eval the model')
     parser.add_argument('--do_optimize', action='store_true', help='optimize weights')
     parser.add_argument('--ratio', type=int, default=80, help='set ratio (which dataset to load)')
+    parser.add_argument('--weights_path', type=str, default='src/model/weights.json', help='indicate where to load '
+                                                                                           'weight')
     args = parser.parse_args()
+
     if args.do_eval:
-        core = Core('../../data/train_{}.csv'.format(args.ratio), False)
+        core = Core('data/train_{}.csv'.format(args.ratio), False, args.weights_path)
         core.util()
-        print(core.eval('../../data/test_{}.csv'.format(args.ratio)))
+        print(core.eval('data/test_{}.csv'.format(args.ratio)))
+
     if args.do_optimize:
-        core = Core('../../data/train_{}.csv'.format(args.ratio), True)
+        core = Core('data/train_{}.csv'.format(args.ratio), True, args.weights_path)
         core.util()
         core.optimizer()
-        core.save('weights.json')
+        core.save(args.weights_path)
         print('result weights: {}'.format(core.weights.tolist()))
