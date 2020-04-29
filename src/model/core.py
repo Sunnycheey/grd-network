@@ -287,6 +287,7 @@ if __name__ == '__main__':
     parser.add_argument('--ratio', type=int, default=80, help='set ratio (which dataset to load)')
     parser.add_argument('--weights_path', type=str, default='src/model/weights.json', help='indicate where to load '
                                                                                            'weight')
+
     args = parser.parse_args()
 
     if args.do_eval:
